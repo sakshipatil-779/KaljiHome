@@ -1,8 +1,9 @@
-// Firebase Initialization & Authentication for KaljiHome
-// Complies with client analytics, web app configuration & Firebase Auth
-
+// Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
 import { 
   getAuth, 
   signInWithEmailAndPassword, 
@@ -14,28 +15,33 @@ import {
   Auth
 } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAFsNaoQouwWXxt_2kn6mVWZBiM6_XzhDE",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "kaljihome.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "kaljihome",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "kaljihome.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "579630814455",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:579630814455:web:9163181455968633ed6ff2",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-H679PS2MDP"
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+export const firebaseConfig = {
+  apiKey: "AIzaSyAFsNaoQouwWXxt_2kn6mVWZBiM6_XzhDE",
+  authDomain: "kaljihome.firebaseapp.com",
+  projectId: "kaljihome",
+  storageBucket: "kaljihome.firebasestorage.app",
+  messagingSenderId: "579630814455",
+  appId: "1:579630814455:web:9163181455968633ed6ff2",
+  measurementId: "G-H679PS2MDP"
 };
 
-// Safe initialization for both server-side and client-side Next.js environments
-export const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase
+export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+export const firebaseApp = app;
+export const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
 
-export const firebaseAuth: Auth = getAuth(firebaseApp);
+// Firebase Authentication instance
+export const firebaseAuth: Auth = getAuth(app);
 
-let analyticsInstance: Analytics | null = null;
+let analyticsInstance: Analytics | null = analytics;
 
 export const initFirebaseAnalytics = async (): Promise<Analytics | null> => {
   if (typeof window !== "undefined") {
     const supported = await isSupported().catch(() => false);
     if (supported && !analyticsInstance) {
-      analyticsInstance = getAnalytics(firebaseApp);
+      analyticsInstance = getAnalytics(app);
     }
     return analyticsInstance;
   }
@@ -62,8 +68,15 @@ export async function registerWithFirebase(email: string, pass: string, displayN
 }
 
 /**
- * Sign out from Firebase
+ * Sign out of Firebase session
  */
 export async function signOutFirebase(): Promise<void> {
   await firebaseSignOut(firebaseAuth);
+}
+
+/**
+ * Listen for active user auth state changes
+ */
+export function onAuthStateChangedListener(callback: (user: FirebaseUser | null) => void) {
+  return onAuthStateChanged(firebaseAuth, callback);
 }
