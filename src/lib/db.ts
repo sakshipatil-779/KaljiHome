@@ -266,6 +266,42 @@ export function initializeSchema(db: Database.Database) {
   `);
 
   seedInitialData(db);
+  ensureSakshiUserExists(db);
+}
+
+function ensureSakshiUserExists(db: Database.Database) {
+  const now = new Date().toISOString();
+  const defaultPasswordHash = hashPassword('demoPass123!');
+  
+  // Ensure Sakshi Patil exists
+  db.prepare(`
+    INSERT OR IGNORE INTO users (id, email, display_name, password_hash, role_title, status, created_at, updated_at)
+    VALUES ('usr_sakshi', 'patilsakshi18027@gmail.com', 'Sakshi Patil', ?, 'Family Care Manager & Admin', 'active', ?, ?)
+  `).run(defaultPasswordHash, now, now);
+
+  // Ensure membership for Sakshi on Meera's profile
+  db.prepare(`
+    INSERT OR IGNORE INTO care_memberships (
+      id, profile_id, user_id, role,
+      view_profile, view_medications, manage_medications, record_dose,
+      view_appointments, manage_appointments, view_timeline, manage_members, manage_preferences,
+      status, granted_by_user_id, granted_at, created_at, updated_at
+    ) VALUES (
+      'mem_sakshi', 'prof_meera', 'usr_sakshi', 'care_manager',
+      1, 1, 1, 1, 1, 1, 1, 1, 1,
+      'active', 'usr_meera', ?, ?, ?
+    )
+  `).run(now, now, now);
+
+  // Ensure notification preference for Sakshi
+  db.prepare(`
+    INSERT OR IGNORE INTO notification_preferences (
+      id, profile_id, user_id, notify_upcoming_dose, notify_unconfirmed_dose,
+      notify_upcoming_appointment, channel, quiet_hours_enabled, created_at, updated_at
+    ) VALUES (
+      'pref_sakshi', 'prof_meera', 'usr_sakshi', 1, 1, 1, 'email', 0, ?, ?
+    )
+  `).run(now, now);
 }
 
 export function seedInitialData(db: Database.Database) {
@@ -277,6 +313,12 @@ export function seedInitialData(db: Database.Database) {
 
   // Insert Personas (03_USER_PERSONAS.md)
   const users = [
+    {
+      id: 'usr_sakshi',
+      email: 'patilsakshi18027@gmail.com',
+      display_name: 'Sakshi Patil',
+      role_title: 'Family Care Manager & Admin',
+    },
     {
       id: 'usr_meera',
       email: 'meera@example.com',

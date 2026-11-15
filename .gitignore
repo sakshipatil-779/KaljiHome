@@ -28,6 +28,10 @@
 next-env.d.ts
 
 # Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 /data/*.db
 /data/*.db-journal
 /data/*.db-wal

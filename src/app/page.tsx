@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/components/AppContext';
 import { DoseOccurrence, Appointment, CareMembership } from '@/types';
+import { GrandparentsHeroShowcase } from '@/components/GrandparentsHeroShowcase';
+import { AudioReminderPlayer } from '@/components/AudioReminderPlayer';
+import { BrevoReminderTrigger } from '@/components/BrevoReminderTrigger';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -18,7 +21,9 @@ import {
   Info,
   Sparkles,
   Globe,
-  X
+  X,
+  Mail,
+  Volume2
 } from 'lucide-react';
 
 export default function TodayPage() {
@@ -139,7 +144,10 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-8">
-      {/* 1. Header greeting & Local Context */}
+      {/* 1. Grandparents Hero Showcase (Featured Image from User Upload) */}
+      <GrandparentsHeroShowcase />
+
+      {/* 2. Header greeting & Local Context */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 bg-kalji-50 text-kalji-800 text-xs font-bold px-3 py-1 rounded-full mb-2">
@@ -173,7 +181,7 @@ export default function TodayPage() {
         </div>
       </div>
 
-      {/* 2. Next Scheduled Dose Highlight Card */}
+      {/* 3. Next Scheduled Dose Highlight Card */}
       {nextDose ? (
         <div className="bg-gradient-to-r from-kalji-700 to-kalji-900 text-white rounded-2xl p-6 sm:p-8 shadow-md">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -190,24 +198,35 @@ export default function TodayPage() {
               </p>
             </div>
 
-            {canRecord && (
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => handleRecordStatus(nextDose.id, 'reported_taken')}
-                  className="min-h-touch px-6 py-3 bg-white text-kalji-900 hover:bg-teal-50 font-extrabold text-base rounded-xl shadow transition-colors flex items-center gap-2"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" aria-hidden="true" />
-                  <span>Report Taken</span>
-                </button>
-                <button
-                  onClick={() => handleRecordStatus(nextDose.id, 'snoozed')}
-                  className="min-h-touch px-4 py-3 bg-kalji-800 hover:bg-kalji-600 text-white font-bold text-sm rounded-xl border border-teal-500 transition-colors flex items-center gap-2"
-                >
-                  <BellOff className="w-4 h-4" aria-hidden="true" />
-                  <span>Snooze (15m)</span>
-                </button>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Compact Audio Button */}
+              <AudioReminderPlayer
+                medicationName={nextDose.medication?.display_name || 'Medication'}
+                strengthText={nextDose.medication?.strength_text}
+                scheduledTime={nextDose.scheduled_local_time}
+                elderName={currentProfile.preferred_name}
+                variant="compact"
+              />
+
+              {canRecord && (
+                <>
+                  <button
+                    onClick={() => handleRecordStatus(nextDose.id, 'reported_taken')}
+                    className="min-h-touch px-6 py-3 bg-white text-kalji-900 hover:bg-teal-50 font-extrabold text-base rounded-xl shadow transition-colors flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                    <span>Report Taken</span>
+                  </button>
+                  <button
+                    onClick={() => handleRecordStatus(nextDose.id, 'snoozed')}
+                    className="min-h-touch px-4 py-3 bg-kalji-800 hover:bg-kalji-600 text-white font-bold text-sm rounded-xl border border-teal-500 transition-colors flex items-center gap-2"
+                  >
+                    <BellOff className="w-4 h-4" aria-hidden="true" />
+                    <span>Snooze (15m)</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       ) : (
@@ -222,7 +241,26 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* 3. Chronological Daily Medication Timeline */}
+      {/* 4. Live Multi-Language Audio Reminders Section (Indian Languages) */}
+      <AudioReminderPlayer
+        medicationName={nextDose?.medication?.display_name || 'Amlodipine 5mg'}
+        strengthText={nextDose?.medication?.strength_text || '5mg'}
+        scheduledTime={nextDose?.scheduled_local_time || '08:00 AM'}
+        elderName={currentProfile.preferred_name}
+        variant="card"
+      />
+
+      {/* 5. Live Brevo Gmail Reminder Dispatcher */}
+      <BrevoReminderTrigger
+        defaultEmail={currentUser.email || 'patilsakshi18027@gmail.com'}
+        defaultMedication={nextDose?.medication?.display_name || 'Amlodipine 5mg'}
+        elderName={currentProfile.preferred_name}
+        onSent={(result) => {
+          showNotification(`Email dispatched via Brevo! Message ID: ${result.messageId}`);
+        }}
+      />
+
+      {/* 6. Chronological Daily Medication Timeline */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
@@ -258,7 +296,7 @@ export default function TodayPage() {
             No medication occurrences scheduled for today.
           </div>
         ) : (
-          <div className="space-y-4" role="feed" aria-label="Today&apos;s Dose Occurrences">
+          <div className="space-y-4" role="feed" aria-label="Today's Dose Occurrences">
             {occurrences.map((occ) => {
               const isTaken = occ.status === 'reported_taken';
               const isSkipped = occ.status === 'reported_skipped';
@@ -306,7 +344,7 @@ export default function TodayPage() {
                         )}
 
                         {/* Attribution / Status Badge */}
-                        <div className="pt-2">
+                        <div className="pt-2 flex flex-wrap items-center gap-2">
                           {isTaken && (
                             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">
                               <CheckCircle2 className="w-4 h-4 text-emerald-700" aria-hidden="true" />
@@ -348,12 +386,21 @@ export default function TodayPage() {
                             </div>
                           )}
 
-                          {occ.latest_event?.note && (
-                            <p className="text-xs text-slate-600 mt-1 pl-1">
-                              Note: &quot;{occ.latest_event.note}&quot;
-                            </p>
-                          )}
+                          {/* Individual Dose Audio Button */}
+                          <AudioReminderPlayer
+                            medicationName={occ.medication?.display_name || 'Medicine'}
+                            strengthText={occ.medication?.strength_text}
+                            scheduledTime={occ.scheduled_local_time}
+                            elderName={currentProfile.preferred_name}
+                            variant="compact"
+                          />
                         </div>
+
+                        {occ.latest_event?.note && (
+                          <p className="text-xs text-slate-600 mt-1 pl-1">
+                            Note: &quot;{occ.latest_event.note}&quot;
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -399,7 +446,7 @@ export default function TodayPage() {
         )}
       </div>
 
-      {/* 4. Upcoming Doctor Appointments Summary Card */}
+      {/* 7. Upcoming Doctor Appointments Summary Card */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -447,87 +494,67 @@ export default function TodayPage() {
         )}
       </div>
 
-      {/* 5. Care Circle Summary Footer Card */}
-      <div className="bg-cream-100 border border-slate-200 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-terracotta-100 text-terracotta-700 p-3 rounded-xl">
-            <Users className="w-6 h-6" aria-hidden="true" />
+      {/* 8. Care Circle Summary Footer Card */}
+      <div className="bg-cream-100 rounded-2xl p-6 sm:p-8 border border-cream-300 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-slate-900 font-extrabold text-lg">
+            <Users className="w-5 h-5 text-kalji-700" aria-hidden="true" />
+            <span>Care Circle Coordination</span>
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">Your Active Care Circle</h3>
-            <p className="text-xs text-slate-600">
-              Coordinated care between Meera Sharma, Arjun Sharma (Son), Sunita Patil (Caregiver), and Nisha Sharma.
-            </p>
-          </div>
+          <p className="text-sm text-slate-700">
+            Meera Sharma&apos;s care circle currently includes 4 active family members &amp; caretakers.
+          </p>
         </div>
         <Link
           href="/care-circle"
-          className="min-h-touch px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-sm rounded-xl flex items-center gap-2 shadow-sm transition-colors"
+          className="min-h-touch inline-flex items-center justify-center gap-2 bg-white text-slate-800 hover:bg-slate-50 border border-slate-300 font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
         >
-          <span>View Care Circle &amp; Invite Members</span>
+          <span>Manage Members &amp; Invitations</span>
           <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </Link>
       </div>
 
-      {/* AI Multilingual Routine Summary Modal */}
-      {(aiSummary || loadingAiSummary) && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="ai-summary-title">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+      {/* 9. Marathi AI Routine Assistant Modal / Drawer */}
+      {aiSummary && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ai-dialog-title"
+        >
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-terracotta-700" aria-hidden="true" />
-                <h2 id="ai-summary-title" className="text-xl sm:text-2xl font-extrabold text-slate-900">
-                  काळजी मार्गदर्शक (Care Routine)
-                </h2>
+                <Sparkles className="w-5 h-5 text-terracotta-700" aria-hidden="true" />
+                <h3 id="ai-dialog-title" className="text-lg font-extrabold text-slate-900">
+                  {summaryLang === 'mr' ? 'काळजी सहाय्यक (Marathi Summary)' :
+                   summaryLang === 'hi' ? 'दैनिक देखभाल सारांश (Hindi)' : 'Daily Routine Summary'}
+                </h3>
               </div>
               <button
                 onClick={() => setAiSummary(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
                 aria-label="Close dialog"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Language Switcher Pills */}
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <span className="text-xs font-bold text-slate-500">भाषा / Language:</span>
-              {(['mr', 'hi', 'en'] as const).map((l) => (
-                <button
-                  key={l}
-                  onClick={() => handleFetchAiSummary(l)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
-                    summaryLang === l
-                      ? 'bg-kalji-700 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {l === 'mr' ? 'मराठी' : l === 'hi' ? 'हिंदी' : 'English'}
-                </button>
-              ))}
+            <div className="bg-cream-50 p-4 rounded-xl border border-cream-200 text-slate-800 text-sm whitespace-pre-wrap leading-relaxed font-medium">
+              {aiSummary}
             </div>
 
-            {loadingAiSummary ? (
-              <div className="p-8 text-center text-slate-600 font-bold space-y-2">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-terracotta-700 border-t-transparent"></div>
-                <p>Google Gemini AI द्वारे मराठीमध्ये दिनचर्या सारांश तयार करत आहे...</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-cream-100 border border-slate-200 p-5 rounded-xl text-sm text-slate-800 whitespace-pre-wrap leading-relaxed max-h-[50vh] overflow-y-auto">
-                  {aiSummary}
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={() => setAiSummary(null)}
-                    className="min-h-touch px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[11px] text-slate-500 italic">
+                Generated via Gemini 2.5 Flash • Non-diagnostic care assistance
+              </span>
+              <button
+                onClick={() => setAiSummary(null)}
+                className="min-h-touch px-4 py-2 bg-kalji-700 hover:bg-kalji-800 text-white font-bold text-xs rounded-xl"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

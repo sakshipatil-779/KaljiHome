@@ -1,8 +1,18 @@
-// Firebase Initialization for KaljiHome
-// Complies with client analytics & web app configuration
+// Firebase Initialization & Authentication for KaljiHome
+// Complies with client analytics, web app configuration & Firebase Auth
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged, 
+  updateProfile,
+  User as FirebaseUser,
+  Auth
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAFsNaoQouwWXxt_2kn6mVWZBiM6_XzhDE",
@@ -17,6 +27,8 @@ const firebaseConfig = {
 // Safe initialization for both server-side and client-side Next.js environments
 export const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
+export const firebaseAuth: Auth = getAuth(firebaseApp);
+
 let analyticsInstance: Analytics | null = null;
 
 export const initFirebaseAnalytics = async (): Promise<Analytics | null> => {
@@ -29,3 +41,29 @@ export const initFirebaseAnalytics = async (): Promise<Analytics | null> => {
   }
   return null;
 };
+
+/**
+ * Sign in using Firebase Email & Password
+ */
+export async function signInWithFirebase(email: string, pass: string): Promise<FirebaseUser> {
+  const userCredential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), pass);
+  return userCredential.user;
+}
+
+/**
+ * Register a new user using Firebase Email & Password
+ */
+export async function registerWithFirebase(email: string, pass: string, displayName: string): Promise<FirebaseUser> {
+  const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), pass);
+  if (displayName) {
+    await updateProfile(userCredential.user, { displayName });
+  }
+  return userCredential.user;
+}
+
+/**
+ * Sign out from Firebase
+ */
+export async function signOutFirebase(): Promise<void> {
+  await firebaseSignOut(firebaseAuth);
+}
