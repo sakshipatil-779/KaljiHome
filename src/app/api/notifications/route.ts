@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const result = processNotificationOutbox();
+    const result = await processNotificationOutbox();
     return NextResponse.json({ success: true, ...result });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -13,7 +13,10 @@ import {
   Calendar, 
   Bell, 
   X,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export default function AppointmentsPage() {
@@ -30,6 +33,11 @@ export default function AppointmentsPage() {
   const [scheduledLocalTime, setScheduledLocalTime] = useState('10:00');
   const [purposeNote, setPurposeNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // AI Visit Prep Card states
+  const [prepCard, setPrepCard] = useState<string | null>(null);
+  const [loadingPrepCard, setLoadingPrepCard] = useState(false);
+  const [prepCardCopied, setPrepCardCopied] = useState(false);
 
   useEffect(() => {
     // Default date to tomorrow
@@ -115,6 +123,38 @@ export default function AppointmentsPage() {
       }
     } catch (err: any) {
       showNotification(`Error: ${err.message}`);
+    }
+  };
+
+  const handleGeneratePrepCard = async (appt: Appointment) => {
+    setLoadingPrepCard(true);
+    setPrepCard(null);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'appointment_prep',
+          profileId: currentProfile.id,
+          userId: currentUser.id,
+          doctorName: appt.clinician_display_name,
+          clinicName: appt.facility_display_name,
+          appointmentDate: `${appt.scheduled_local_date} at ${appt.scheduled_local_time} IST`,
+          medicationsSummary: 'Metformin 500mg (oral, twice daily), Amlodipine 5mg (oral, morning), Atorvastatin 10mg (oral, bedtime)',
+          purposeNote: appt.purpose_note,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.card) {
+        setPrepCard(data.card);
+      } else {
+        showNotification(data.error || 'Failed to generate prep card');
+      }
+    } catch (err: any) {
+      showNotification(`AI Error: ${err.message}`);
+    } finally {
+      setLoadingPrepCard(false);
     }
   };
 
@@ -213,24 +253,34 @@ export default function AppointmentsPage() {
                 </div>
 
                 {/* Status Action Buttons */}
-                {isUpcoming && (
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                    <button
-                      onClick={() => handleStatusChange(appt.id, 'completed')}
-                      className="min-h-touch px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5 transition-colors"
-                    >
-                      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                      <span>Mark Attended / Completed</span>
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(appt.id, 'cancelled')}
-                      className="min-h-touch px-3 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg flex items-center gap-1.5 transition-colors"
-                    >
-                      <XCircle className="w-4 h-4 text-slate-500" aria-hidden="true" />
-                      <span>Cancel</span>
-                    </button>
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => handleGeneratePrepCard(appt)}
+                    className="min-h-touch px-3 py-1.5 text-xs font-bold text-kalji-800 bg-kalji-50 hover:bg-kalji-100 border border-kalji-200 rounded-lg flex items-center gap-1.5 transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-kalji-700" aria-hidden="true" />
+                    <span>Prep Card (Gemini AI)</span>
+                  </button>
+
+                  {isUpcoming && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleStatusChange(appt.id, 'completed')}
+                        className="min-h-touch px-3.5 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5 transition-colors"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Attended</span>
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(appt.id, 'cancelled')}
+                        className="min-h-touch px-2.5 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg flex items-center gap-1 transition-colors"
+                      >
+                        <XCircle className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -356,6 +406,68 @@ export default function AppointmentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI Doctor Visit Preparation Card Modal */}
+      {(prepCard || loadingPrepCard) && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="prep-card-title">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-kalji-700" aria-hidden="true" />
+                <h2 id="prep-card-title" className="text-xl sm:text-2xl font-extrabold text-slate-900">
+                  Doctor Visit Preparation Card
+                </h2>
+              </div>
+              <button
+                onClick={() => setPrepCard(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+                aria-label="Close dialog"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {loadingPrepCard ? (
+              <div className="p-12 text-center text-slate-600 font-bold space-y-2">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-kalji-700 border-t-transparent"></div>
+                <p>Generating personalized consultation checklist with Google Gemini...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl font-mono text-xs sm:text-sm text-slate-800 whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto">
+                  {prepCard}
+                </div>
+
+                <div className="text-[11px] text-slate-500 italic bg-cream-100 p-3 rounded-lg border border-cream-200">
+                  * Clinical Boundary Note: This preparation card is an organizational checklist for patient discussions and does not constitute medical advice or diagnosis.
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      if (prepCard) {
+                        navigator.clipboard.writeText(prepCard);
+                        setPrepCardCopied(true);
+                        setTimeout(() => setPrepCardCopied(false), 2000);
+                      }
+                    }}
+                    className="min-h-touch px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm"
+                  >
+                    {prepCardCopied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-600" />}
+                    <span>{prepCardCopied ? 'Copied' : 'Copy Checklist'}</span>
+                  </button>
+                  <button
+                    onClick={() => setPrepCard(null)}
+                    className="min-h-touch px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

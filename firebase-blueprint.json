@@ -1,0 +1,13 @@
+{
+  "schema": "firebase-blueprint@v1",
+  "projectId": "kaljihome",
+  "services": {
+    "firestore": {
+      "rules": "firestore.rules"
+    },
+    "analytics": {
+      "enabled": true,
+      "measurementId": "G-H679PS2MDP"
+    }
+  }
+}

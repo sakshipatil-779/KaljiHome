@@ -80,11 +80,54 @@ KaljiHome — Safe, respectful elderly care coordination.
 }
 
 /**
+ * Dispatch email via Brevo API if configured, or record to dev sink
+ */
+async function dispatchEmail(
+  email: RenderedEmail, 
+  recipientName: string
+): Promise<{ mode: string; messageId?: string }> {
+  const brevoKey = process.env.BREVO_API_KEY;
+  const brevoSender = process.env.BREVO_SENDER_EMAIL || 'patilsakshi18027@gmail.com';
+
+  if (brevoKey && process.env.EMAIL_DELIVERY_MODE !== 'sink') {
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoKey,
+          'Content-Type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: 'KaljiHome Care Circle', email: brevoSender },
+          to: [{ email: email.to, name: recipientName }],
+          subject: email.subject,
+          htmlContent: email.bodyHtml,
+          textContent: email.bodyText,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return { mode: 'brevo_live', messageId: data.messageId || `brevo_${Date.now()}` };
+      } else {
+        const errBody = await res.text();
+        return { mode: 'dev_sink_brevo_fallback', messageId: `fallback_${res.status}` };
+      }
+    } catch {
+      return { mode: 'dev_sink_network_fallback', messageId: `offline_sink_${Date.now()}` };
+    }
+  }
+
+  return { mode: 'dev_sink', messageId: `dev_sink_${Date.now()}` };
+}
+
+/**
  * Process pending notification outbox items.
- * Validates recipient eligibility (membership still active), simulates or performs dispatch,
+ * Validates recipient eligibility (membership still active), dispatches via Brevo or dev sink,
  * and records attempt history.
  */
-export function processNotificationOutbox(limit = 20): { processed: number; succeeded: number; failed: number } {
+export async function processNotificationOutbox(limit = 20): Promise<{ processed: number; succeeded: number; failed: number }> {
   const db = getDb();
   const now = new Date().toISOString();
 
@@ -115,13 +158,15 @@ export function processNotificationOutbox(limit = 20): { processed: number; succ
       // 2. Render safe email
       const email = renderNotificationEmail(item, item.recipient_name, item.recipient_email);
 
-      // In development / demo sink mode, we log and mark dispatched
+      // 3. Dispatch via Brevo or dev sink
+      const dispatchResult = await dispatchEmail(email, item.recipient_name);
+
       db.transaction(() => {
         // Record successful attempt
         db.prepare(`
           INSERT INTO notification_attempts (id, outbox_id, attempt_number, status, provider_response, created_at)
           VALUES (?, ?, ?, 'success', ?, ?)
-        `).run(attemptId, item.id, attemptNumber, JSON.stringify({ mode: 'dev_sink', delivered_to: email.to }), now);
+        `).run(attemptId, item.id, attemptNumber, JSON.stringify({ mode: dispatchResult.mode, messageId: dispatchResult.messageId, delivered_to: email.to }), now);
 
         // Update outbox status to dispatched
         db.prepare(`

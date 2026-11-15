@@ -307,8 +307,8 @@ describe('Domain Services & Security Enforcement', () => {
       expect(email.bodyText).toContain('Sign in to your secure care dashboard');
     });
 
-    it('dispatches queued items through development email sink', () => {
-      const result = processNotificationOutbox();
+    it('dispatches queued items through development email sink', async () => {
+      const result = await processNotificationOutbox();
       expect(result).toHaveProperty('processed');
       expect(result).toHaveProperty('succeeded');
       expect(result).toHaveProperty('failed');

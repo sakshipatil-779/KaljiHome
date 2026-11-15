@@ -15,7 +15,10 @@ import {
   Users, 
   ArrowRight,
   ShieldAlert,
-  Info
+  Info,
+  Sparkles,
+  Globe,
+  X
 } from 'lucide-react';
 
 export default function TodayPage() {
@@ -26,6 +29,11 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [selectedNote, setSelectedNote] = useState<{ [key: string]: string }>({});
   const [showNoteInput, setShowNoteInput] = useState<{ [key: string]: boolean }>({});
+
+  // Multilingual AI Routine states
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [loadingAiSummary, setLoadingAiSummary] = useState(false);
+  const [summaryLang, setSummaryLang] = useState<'mr' | 'hi' | 'en'>('mr');
 
   const todayDateStr = new Date().toISOString().slice(0, 10);
   const formattedToday = new Date().toLocaleDateString('en-IN', {
@@ -90,6 +98,38 @@ export default function TodayPage() {
       }
     } catch (err: any) {
       showNotification(`Request error: ${err.message}`);
+    }
+  };
+
+  const handleFetchAiSummary = async (lang: 'mr' | 'hi' | 'en') => {
+    setLoadingAiSummary(true);
+    setSummaryLang(lang);
+    setAiSummary(null);
+    try {
+      const routineItems = occurrences.map(o => `${o.scheduled_local_time} IST: ${o.medication?.display_name} ${o.medication?.strength_text} (Status: ${o.status})`).join('\n');
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'routine_summary',
+          profileId: currentProfile.id,
+          userId: currentUser.id,
+          elderName: currentProfile.preferred_name,
+          language: lang,
+          routineItems: routineItems || 'No scheduled doses for today',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.summary) {
+        setAiSummary(data.summary);
+      } else {
+        showNotification(data.error || 'Failed to generate summary');
+      }
+    } catch (err: any) {
+      showNotification(`AI Error: ${err.message}`);
+    } finally {
+      setLoadingAiSummary(false);
     }
   };
 
@@ -184,20 +224,29 @@ export default function TodayPage() {
 
       {/* 3. Chronological Daily Medication Timeline */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
             <span>Today&apos;s Medication Routine</span>
             <span className="text-sm font-bold bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full">
               {occurrences.length}
             </span>
           </h2>
-          <Link 
-            href="/medications" 
-            className="text-kalji-700 hover:text-kalji-800 font-bold text-sm flex items-center gap-1 hover:underline"
-          >
-            <span>View all prescriptions</span>
-            <ArrowRight className="w-4 h-4" aria-hidden="true" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleFetchAiSummary('mr')}
+              className="min-h-touch px-3 py-1.5 text-xs font-bold text-terracotta-800 bg-terracotta-50 hover:bg-terracotta-100 border border-terracotta-200 rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-terracotta-700" aria-hidden="true" />
+              <span>काळजी मार्गदर्शक (मराठी AI)</span>
+            </button>
+            <Link 
+              href="/medications" 
+              className="text-kalji-700 hover:text-kalji-800 font-bold text-sm flex items-center gap-1 hover:underline"
+            >
+              <span>View prescriptions</span>
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
 
         {loading ? (
@@ -419,6 +468,69 @@ export default function TodayPage() {
           <ArrowRight className="w-4 h-4" aria-hidden="true" />
         </Link>
       </div>
+
+      {/* AI Multilingual Routine Summary Modal */}
+      {(aiSummary || loadingAiSummary) && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="ai-summary-title">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-terracotta-700" aria-hidden="true" />
+                <h2 id="ai-summary-title" className="text-xl sm:text-2xl font-extrabold text-slate-900">
+                  काळजी मार्गदर्शक (Care Routine)
+                </h2>
+              </div>
+              <button
+                onClick={() => setAiSummary(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"
+                aria-label="Close dialog"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Language Switcher Pills */}
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <span className="text-xs font-bold text-slate-500">भाषा / Language:</span>
+              {(['mr', 'hi', 'en'] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => handleFetchAiSummary(l)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                    summaryLang === l
+                      ? 'bg-kalji-700 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {l === 'mr' ? 'मराठी' : l === 'hi' ? 'हिंदी' : 'English'}
+                </button>
+              ))}
+            </div>
+
+            {loadingAiSummary ? (
+              <div className="p-8 text-center text-slate-600 font-bold space-y-2">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-terracotta-700 border-t-transparent"></div>
+                <p>Google Gemini AI द्वारे मराठीमध्ये दिनचर्या सारांश तयार करत आहे...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-cream-100 border border-slate-200 p-5 rounded-xl text-sm text-slate-800 whitespace-pre-wrap leading-relaxed max-h-[50vh] overflow-y-auto">
+                  {aiSummary}
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => setAiSummary(null)}
+                    className="min-h-touch px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-sm"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
