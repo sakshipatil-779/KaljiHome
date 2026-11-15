@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" width="100%" height="100%" fill="none" role="img" aria-label="KaljiHome Logo">
+  <defs>
+    <linearGradient id="warmTerracotta" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#C2410C" />
+    </linearGradient>
+    <linearGradient id="calmTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D9488" />
+      <stop offset="100%" stop-color="#0F766E" />
+    </linearGradient>
+    <linearGradient id="softGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FEF3C7" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#FDE68A" stop-opacity="0.2" />
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <!-- Brand Emblem (Hands & Home & Caring Heart) -->
+  <g transform="translate(15, 10)" filter="url(#softShadow)">
+    <!-- Gentle circular background aura -->
+    <circle cx="50" cy="50" r="46" fill="#F0FDFA" stroke="#CCFBF1" stroke-width="2" />
+
+    <!-- Protective Home Roof formed by stylized loving hands -->
+    <path d="M22 56 C24 38, 38 24, 50 18 C62 24, 76 38, 78 56 C74 54, 68 50, 64 52 C58 54, 54 44, 50 42 C46 44, 42 54, 36 52 C32 50, 26 54, 22 56 Z" 
+          fill="url(#calmTeal)" />
+
+    <!-- Roof peak accent -->
+    <path d="M50 14 L30 32 L34 35 L50 20 L66 35 L70 32 Z" fill="url(#warmTerracotta)" />
+
+    <!-- Supporting Care Hands embracing from base -->
+    <path d="M26 62 C26 76, 36 84, 50 84 C64 84, 74 76, 74 62 C68 66, 62 66, 58 63 C54 60, 52 64, 50 64 C48 64, 46 60, 42 63 C38 66, 32 66, 26 62 Z" 
+          fill="url(#calmTeal)" opacity="0.9" />
+
+    <!-- Radiant Inner Care Heart & Leaf -->
+    <path d="M50 46 C44 40, 37 46, 37 52 C37 60, 47 67, 50 70 C53 67, 63 60, 63 52 C63 46, 56 40, 50 46 Z" 
+          fill="url(#warmTerracotta)" />
+    
+    <!-- Central Vitality Spark / Sprout -->
+    <circle cx="50" cy="53" r="3.5" fill="#FEF3C7" />
+  </g>
+
+  <!-- Brand Typography -->
+  <g transform="translate(130, 24)">
+    <!-- Wordmark -->
+    <text x="0" y="44" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="800" letter-spacing="-0.5">
+      <tspan fill="#0F766E">Kalji</tspan><tspan fill="#C2410C">Home</tspan>
+    </text>
+
+    <!-- Cultural Script Badge: काळजी (Care in Marathi/Hindi/Gujarati) -->
+    <rect x="236" y="16" width="68" height="26" rx="13" fill="#FFF7ED" stroke="#FDBA74" stroke-width="1.2" />
+    <text x="270" y="34" font-family="'Noto Sans Devanagari', 'Mangal', system-ui, sans-serif" font-size="14" font-weight="700" fill="#C2410C" text-anchor="middle">काळजी</text>
+
+    <!-- Subtitle / Tagline -->
+    <text x="2" y="72" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.5" font-weight="600" fill="#475569" letter-spacing="0.3">
+      Elder Care &amp; Daily Medication Companion
+    </text>
+
+    <!-- Trust Accent Line -->
+    <rect x="2" y="82" width="70" height="3" rx="1.5" fill="#0D9488" />
+  </g>
+</svg>
