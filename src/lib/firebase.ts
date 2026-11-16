@@ -11,6 +11,8 @@ import {
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
   updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
   User as FirebaseUser,
   Auth
 } from "firebase/auth";
@@ -35,6 +37,10 @@ export const analytics = typeof window !== "undefined" ? getAnalytics(app) : nul
 // Firebase Authentication instance
 export const firebaseAuth: Auth = getAuth(app);
 
+// Google Authentication Provider
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
 let analyticsInstance: Analytics | null = analytics;
 
 export const initFirebaseAnalytics = async (): Promise<Analytics | null> => {
@@ -47,6 +53,14 @@ export const initFirebaseAnalytics = async (): Promise<Analytics | null> => {
   }
   return null;
 };
+
+/**
+ * Sign in using Firebase Google Authentication
+ */
+export async function signInWithGoogle(): Promise<FirebaseUser> {
+  const result = await signInWithPopup(firebaseAuth, googleProvider);
+  return result.user;
+}
 
 /**
  * Sign in using Firebase Email & Password

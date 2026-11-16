@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { 
   signInWithFirebase, 
   registerWithFirebase, 
+  signInWithGoogle,
   signOutFirebase 
 } from '@/lib/firebase';
 import { useApp } from './AppContext';
@@ -16,7 +17,8 @@ import {
   X, 
   AlertCircle,
   KeyRound,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 
 interface FirebaseAuthModalProps {
@@ -32,9 +34,52 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ isOpen, on
   const [displayName, setDisplayName] = useState('');
   const [roleTitle, setRoleTitle] = useState('Family Care Manager');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const user = await signInWithGoogle();
+      
+      // Sync with backend SQLite session
+      try {
+        const syncRes = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: user.email,
+            displayName: user.displayName || user.email?.split('@')[0],
+            firebaseUid: user.uid,
+          }),
+        });
+        const syncData = await syncRes.json();
+        if (syncData.user) {
+          switchUser(syncData.user.id);
+        }
+      } catch (syncErr) {
+        console.warn('Backend Google auth sync warning:', syncErr);
+      }
+
+      showNotification(`Signed in with Google as ${user.displayName || user.email}!`);
+      onClose();
+    } catch (err: any) {
+      console.error('Google Sign-in error:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setErrorMsg('Google sign-in popup was closed before completing.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setErrorMsg('Sign-in popup was blocked by your browser. Please allow popups for localhost.');
+      } else {
+        setErrorMsg(err.message || 'Failed to authenticate with Google.');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +112,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ isOpen, on
     } catch (err: any) {
       let message = err.message || 'Firebase login failed';
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
-        message = 'Invalid email or password. You can also use "Quick Demo Personas" or "Create Account".';
+        message = 'Invalid email or password. You can also use "Continue with Google" or "Demo Profiles".';
       }
       setErrorMsg(message);
     } finally {
@@ -120,18 +165,18 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ isOpen, on
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="firebase-auth-title">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-6 my-8 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5 my-8 animate-in fade-in duration-200">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="p-2 bg-kalji-50 text-kalji-700 rounded-xl border border-kalji-200">
               <ShieldCheck className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
               <h2 id="firebase-auth-title" className="text-xl font-extrabold text-slate-900">
-                Firebase Authentication
+                KaljiHome Authentication
               </h2>
-              <p className="text-xs text-slate-500 font-medium">KaljiHome Secure Access</p>
+              <p className="text-xs text-slate-500 font-medium">Google &amp; Firebase Secure Access</p>
             </div>
           </div>
           <button
@@ -178,7 +223,43 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ isOpen, on
           </div>
         )}
 
-        {/* Sign In Tab */}
+        {/* Google Authentication Option (Highlighted) */}
+        {(tab === 'signin' || tab === 'signup') && (
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading || loading}
+              className="w-full min-h-[48px] px-4 py-3 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 text-slate-800 font-extrabold text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-3 focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50"
+            >
+              {googleLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-teal-700" />
+                  <span>Connecting with Google...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>Continue with Google</span>
+                </>
+              )}
+            </button>
+
+            <div className="relative my-3 flex items-center justify-center">
+              <div className="border-t border-slate-200 w-full" />
+              <span className="bg-white px-3 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                or sign in with email
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Sign In Tab Form */}
         {tab === 'signin' && (
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
@@ -220,12 +301,12 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ isOpen, on
               disabled={loading}
               className="w-full min-h-touch py-3 bg-kalji-700 hover:bg-kalji-800 text-white font-extrabold text-sm rounded-xl shadow transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? 'Authenticating with Firebase...' : 'Sign In with Firebase'}
+              {loading ? 'Authenticating with Firebase...' : 'Sign In with Email'}
             </button>
           </form>
         )}
 
-        {/* Create Account Tab */}
+        {/* Create Account Tab Form */}
         {tab === 'signup' && (
           <form onSubmit={handleSignUp} className="space-y-4">
             <div>
